@@ -1,76 +1,82 @@
 ﻿using UnityEngine;
-using TMPro; 
-using UnityEngine.SceneManagement;
+using TMPro;
 
 public class GameController : MonoBehaviour
 {
-    // Tham chiếu UI (Cần gắn từ Inspector)
-    public TextMeshProUGUI scoreText; 
+    // Cài đặt Game Play
+    public TextMeshProUGUI scoreText;
     public GameObject gameOverPanel;
     
-    // Tham chiếu Materials (Cần gắn từ Inspector)
-    public Material blackTileMat;
-    public Material hitTileMat; // Material màu xám khi chạm đúng
+    // Cài đặt Âm thanh
+    public AudioSource musicSource; // Nhạc nền của game
+    public AudioSource errorSFXSource; // SFX lỗi
+    
+    // Cài đặt BPM Sync
+    public float musicBPM = 40f; 
+    public float spawnZPosition = 5f; 
+    public float hitZPosition = -2f; 
+    
+    [HideInInspector] public float currentSpeed; 
+    
+    private int score = 0;
 
-    // Cấu hình Game
-    public int score = 0;
-    public float initialSpeed = 10f;
-    public float speedIncreaseRate = 0.2f; 
-    [HideInInspector] public float currentSpeed;
+    void Awake()
+    {
+        float spawnTimeInterval = 60f / musicBPM;
+        float distance = spawnZPosition - hitZPosition;
+        currentSpeed = distance / spawnTimeInterval; 
+        
+        Time.timeScale = 1f; // Khởi động game
+    }
 
     void Start()
     {
-        // Khởi tạo trạng thái game
-        currentSpeed = initialSpeed;
-        score = 0;
-        
-        if (gameOverPanel != null)
+        UpdateScoreUI(); 
+        if (musicSource != null && musicSource.clip != null)
         {
-            gameOverPanel.SetActive(false);
+            musicSource.Play(); // Bắt đầu phát nhạc
         }
-
-        UpdateScoreUI();
-        Time.timeScale = 1f; 
     }
 
     public void AddScore()
     {
         score++;
-        currentSpeed += speedIncreaseRate; 
-        UpdateScoreUI();
+        UpdateScoreUI(); 
     }
 
-    void UpdateScoreUI()
+    private void UpdateScoreUI()
     {
         if (scoreText != null)
         {
             scoreText.text = "Score: " + score.ToString();
         }
     }
-
+    
     public void GameOver()
     {
-        // 1. DỪNG GAME
-        Time.timeScale = 0f; 
-        
-        // 2. KÍCH HOẠT HIỆU ỨNG NHẤP NHÁY TRÊN TẤT CẢ CÁC Ô
-        Tile[] activeTiles = FindObjectsByType<Tile>(FindObjectsSortMode.None);
-        foreach (Tile tile in activeTiles)
+        // LOGIC DỪNG NHẠC KHI GAME OVER
+        if (musicSource != null)
         {
-            // False: đây là Game Over chung, không phải miss một ô đen cụ thể
-            tile.StartFlash(false); 
+            musicSource.Stop(); 
         }
 
-        // 3. HIỂN THỊ GAME OVER PANEL 
+        if (errorSFXSource != null)
+        {
+            errorSFXSource.Play();
+        }
+        
+        Time.timeScale = 0f;
+        
         if (gameOverPanel != null)
         {
             gameOverPanel.SetActive(true);
         }
     }
-
+    
     public void RestartGame()
     {
-        // Tải lại Scene hiện tại
-        SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+        UnityEngine.SceneManagement.SceneManager.LoadScene(
+            UnityEngine.SceneManagement.SceneManager.GetActiveScene().name
+        );
     }
 }

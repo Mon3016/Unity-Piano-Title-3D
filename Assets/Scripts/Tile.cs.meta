@@ -1,2 +1,16 @@
 fileFormatVersion: 2
 guid: 9d413a28fc0c17a4cb394b6a729510f2
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences:
+  - blackTileMat: {fileID: 2100000, guid: 1444d0cc342650348a3056b742f0140a, type: 2}
+  - hitTileMat: {fileID: 2100000, guid: ab7b794db70175449a2967c8d7a97373, type: 2}
+  - errorTileMat: {fileID: 2100000, guid: fd9c83ff94b3fd14295741c71535f767, type: 2}
+  - whiteTileMat: {fileID: 2100000, guid: a61354481b3dd914d85c619b2d7fa4c4, type: 2}
+  - sfxSource: {instanceID: 0}
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

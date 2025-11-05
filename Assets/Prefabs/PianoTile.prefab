@@ -12,7 +12,8 @@ GameObject:
   - component: {fileID: 6970738684229020182}
   - component: {fileID: 5828139495673293951}
   - component: {fileID: 2160924081659717491}
-  - component: {fileID: 898810027173168913}
+  - component: {fileID: 1667113588069263597}
+  - component: {fileID: 8685867424657308118}
   m_Layer: 0
   m_Name: PianoTile
   m_TagString: Untagged
@@ -68,7 +69,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: a61354481b3dd914d85c619b2d7fa4c4, type: 2}
+  - {fileID: 2100000, guid: 1444d0cc342650348a3056b742f0140a, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -112,7 +113,34 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1, y: 1, z: 1}
   m_Center: {x: 0, y: 0, z: 0}
---- !u!114 &898810027173168913
+--- !u!54 &1667113588069263597
+Rigidbody:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2266389726472173273}
+  serializedVersion: 5
+  m_Mass: 1
+  m_LinearDamping: 0
+  m_AngularDamping: 0.05
+  m_CenterOfMass: {x: 0, y: 0, z: 0}
+  m_InertiaTensor: {x: 1, y: 1, z: 1}
+  m_InertiaRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ImplicitCom: 1
+  m_ImplicitTensor: 1
+  m_UseGravity: 0
+  m_IsKinematic: 1
+  m_Interpolate: 0
+  m_Constraints: 0
+  m_CollisionDetection: 0
+--- !u!114 &8685867424657308118
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -124,6 +152,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9d413a28fc0c17a4cb394b6a729510f2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Tile
-  speed: 0
-  isBlackTile: 0
-  hitMaterial: {fileID: 2100000, guid: ab7b794db70175449a2967c8d7a97373, type: 2}
+  blackTileMat: {fileID: 2100000, guid: 1444d0cc342650348a3056b742f0140a, type: 2}
+  hitTileMat: {fileID: 2100000, guid: ab7b794db70175449a2967c8d7a97373, type: 2}
+  errorTileMat: {fileID: 2100000, guid: fd9c83ff94b3fd14295741c71535f767, type: 2}
+  whiteTileMat: {fileID: 2100000, guid: a61354481b3dd914d85c619b2d7fa4c4, type: 2}
+  sfxSource: {fileID: 0}
+  tileType: 1

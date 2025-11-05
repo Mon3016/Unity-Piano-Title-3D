@@ -1,99 +1,168 @@
-﻿using UnityEngine;
+﻿using UnityEngine; 
 using System.Collections; 
 
 public class Tile : MonoBehaviour
 {
-    // Các biến cần được gán từ TileSpawner
-    [HideInInspector] public float speed;
-    [HideInInspector] public bool isBlackTile;
-    
-    // Tham chiếu (Cần gắn từ Inspector trên Prefab PianoTile)
-    public Material flashRedMat; 
-    
-    private MeshRenderer meshRenderer;
+    // Cài đặt Script
     private GameController gameController;
-    
-    // --- KHAI BÁO BIẾN ĐÃ BỊ THIẾU TRƯỚC ĐÓ ---
-    private bool isHit = false; 
+    private Renderer tileRenderer;
 
-    void Start()
-    {
-        meshRenderer = GetComponent<MeshRenderer>();
-        gameController = FindFirstObjectByType<GameController>(); 
-    }
+    // Cài đặt Prefab (Cấu hình trong Inspector)
+    public Material blackTileMat;
+    public Material hitTileMat;
+    public Material errorTileMat;
+    public Material whiteTileMat; 
+    public AudioSource sfxSource; 
 
-    void Update()
+    // Logic Chơi game
+    [HideInInspector] public int tileType = 1; // 1: Đen, 0: Trắng
+    private bool isHit = false;
+
+    public void SetTileType(int type)
     {
-        if (Time.timeScale > 0)
+        tileType = type;
+        if (tileRenderer == null) tileRenderer = GetComponent<Renderer>();
+        
+        if (tileType == 1) // Ô Đen
         {
-            // Di chuyển ô về phía Camera (trục Z âm)
-            transform.Translate(Vector3.back * speed * Time.deltaTime);
-
-            // KIỂM TRA MISS (ĐÃ SỬA: Thêm điều kiện !isHit)
-            if (isBlackTile && !isHit && transform.position.z < -5f)
+            if (tileRenderer != null && blackTileMat != null)
             {
-                isHit = true; // Đánh dấu là đã xử lý
-                StartFlash(true); 
-                gameController.GameOver();
+                tileRenderer.material = blackTileMat;
+            }
+        }
+        else // tileType == 0 (Ô Trắng)
+        {
+            if (tileRenderer != null && whiteTileMat != null)
+            {
+                tileRenderer.material = whiteTileMat;
             }
         }
     }
 
-    public void OnHit()
+    void Awake()
     {
-        // Bảo vệ: Ngăn chặn xử lý nếu đã chạm hoặc game controller không tồn tại
-        if (gameController == null || meshRenderer == null || isHit) return; 
-
-        if (isBlackTile)
+        gameController = FindFirstObjectByType<GameController>(); 
+        tileRenderer = GetComponent<Renderer>();
+        
+        // Buộc gán Material trắng mặc định 
+        if (tileRenderer != null && whiteTileMat != null)
         {
-            // CHẠM ĐÚNG Ô ĐEN
-            isHit = true; // <--- ĐÁNH DẤU LÀ ĐÃ CHẠM!
-
-            gameController.AddScore();
-
-            // 2. Đổi màu sang xám và loại bỏ Collider
-            meshRenderer.material = gameController.hitTileMat;
-            GetComponent<Collider>().enabled = false;
-
-            // 3. Hủy đối tượng sau 1 giây
-            Destroy(gameObject, 1f); 
+             tileRenderer.material = whiteTileMat;
         }
-        else
+    }
+
+    void Update()
+    {
+        if (Time.timeScale == 0f || gameController == null) return;
+        
+        // Di chuyển ô gạch
+        transform.position += Vector3.back * gameController.currentSpeed * Time.deltaTime;
+
+        // Kiểm tra MISS (Ô gạch đen trôi qua HitBar)
+        if (tileType == 1 && !isHit && transform.position.z <= gameController.hitZPosition)
         {
-            // CHẠM SAI Ô TRẮNG
-            
-            // 1. Bắt đầu nhấp nháy trên ô trắng này (chớp màu đỏ)
-            StartFlash(false); 
-            
-            // 2. Kết thúc game
-            gameController.GameOver(); 
+            if (tileRenderer != null)
+            {
+                // Dùng hiệu ứng chớp nháy khi MISS
+                StartCoroutine(MissFeedback());
+            }
         }
+    }
+
+    private void OnMouseDown()
+    {
+        if (Time.timeScale == 0f) return;
+        
+        if (tileType == 1 && !isHit) // CHẠM ĐÚNG (Black Tile)
+        {
+            isHit = true;
+            gameController.AddScore(); 
+            
+            if (sfxSource != null) sfxSource.Play();
+
+            if (tileRenderer != null)
+            {
+                tileRenderer.material = hitTileMat;
+            }
+            Destroy(gameObject, 0.1f);
+        }
+        else // CHẠM SAI (Ô Trắng hoặc Khoảng trống)
+        {
+            // Bắt đầu hiệu ứng chớp nháy
+            StartCoroutine(WrongTapFeedback());
+        }
+    }
+
+    // Xử lý Hủy Gạch (Tự động xóa gạch sau khi trôi qua HitBar)
+    void OnTriggerEnter(Collider other)
+    {
+        // Kiểm tra xem gạch có chạm vào vật thể có Tag là DestroyZone không
+        if (other.CompareTag("DestroyZone"))
+        {
+            // Hủy gạch nếu gạch đã được nhấn (hit) hoặc là ô trắng (tileType=0)
+            if (isHit || tileType == 0) 
+            {
+                Destroy(gameObject);
+            }
+        }
+    }
+
+    // Coroutine cho hiệu ứng chớp đỏ khi CHẠM SAI
+    IEnumerator WrongTapFeedback()
+    {
+        int blinkCount = 3; 
+        float blinkDuration = 0.08f; 
+
+        // Màu gốc luôn là màu trắng vì chỉ chạm sai vào khoảng trống/ô trắng
+        Material originalMat = whiteTileMat; 
+
+        for (int i = 0; i < blinkCount; i++)
+        {
+            if (tileRenderer != null && errorTileMat != null)
+            {
+                tileRenderer.material = errorTileMat;
+            }
+            yield return new WaitForSecondsRealtime(blinkDuration); 
+
+            if (tileRenderer != null && originalMat != null)
+            {
+                tileRenderer.material = originalMat;
+            }
+            yield return new WaitForSecondsRealtime(blinkDuration);
+        }
+        
+        // Sau khi chớp xong, dừng game
+        gameController.GameOver();
     }
     
-    // --- HÀM XỬ LÝ NHẤP NHÁY ---
-    public void StartFlash(bool isMiss)
+    // Coroutine cho hiệu ứng chớp đỏ khi MISS (trôi qua vạch)
+    IEnumerator MissFeedback()
     {
-        StopAllCoroutines(); 
-        StartCoroutine(FlashEffect(flashRedMat, isMiss));
-    }
+        int blinkCount = 3; 
+        float blinkDuration = 0.08f; 
 
-    IEnumerator FlashEffect(Material flashMaterial, bool destroyAfterFlash)
-    {
-        Material originalMaterial = meshRenderer.material;
-        int flashes = 3; 
+        // Màu gốc là màu đen
+        Material originalMat = blackTileMat; 
+        
+        // Đặt tileType về 0 để tránh kích hoạt MissFeedback lần nữa trong Update
+        tileType = 0; 
 
-        for (int i = 0; i < flashes; i++)
+        for (int i = 0; i < blinkCount; i++)
         {
-            meshRenderer.material = flashMaterial;
-            yield return new WaitForSecondsRealtime(0.1f); // Dùng Realtime vì Time.timeScale có thể bằng 0
+            if (tileRenderer != null && errorTileMat != null)
+            {
+                tileRenderer.material = errorTileMat;
+            }
+            yield return new WaitForSecondsRealtime(blinkDuration); 
 
-            meshRenderer.material = originalMaterial;
-            yield return new WaitForSecondsRealtime(0.1f);
+            if (tileRenderer != null && originalMat != null)
+            {
+                tileRenderer.material = originalMat;
+            }
+            yield return new WaitForSecondsRealtime(blinkDuration);
         }
-
-        if (destroyAfterFlash) 
-        {
-            Destroy(gameObject); 
-        }
+        
+        // Sau khi chớp xong, dừng game
+        gameController.GameOver();
     }
 }
