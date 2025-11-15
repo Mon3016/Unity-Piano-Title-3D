@@ -20,12 +20,17 @@ public class TileSpawner : MonoBehaviour
         {
             spawnZPosition = gameController.spawnZPosition; 
             nextSpawnTime = Time.time + spawnTimeOffset;
+            
+            Debug.Log($"📍 TileSpawner initialized - Spawn Z Position: {spawnZPosition}");
         }
     }
-
+    
     void Update()
     {
         if (gameController == null || Time.timeScale == 0f) return;
+        
+        // Cập nhật spawn position động từ GameController
+        spawnZPosition = gameController.spawnZPosition;
 
         float spawnInterval = 60f / gameController.musicBPM;
 

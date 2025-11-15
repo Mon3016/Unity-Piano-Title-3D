@@ -10,21 +10,34 @@ public class GameController : MonoBehaviour
     public TextMeshProUGUI feedbackText; // Text hiển thị Perfect/Great/Good
     public GameObject gameOverPanel;
     
+    public MenuManager menuManager; // Menu Manager reference
+    
     // Cài đặt Âm thanh
     public AudioSource musicSource; // Nhạc nền của game
     public AudioSource errorSFXSource; // SFX lỗi
     
     // Cài đặt BPM Sync
     public float musicBPM = 40f; 
-    public float spawnZPosition = 5f; 
+    public float spawnZPosition = 30f; // Tăng từ 5 lên 30 để tiles spawn xa hơn
     public float hitZPosition = -2f; 
+    
+    // Cài đặt Combo Multiplier
+    public bool enableComboMultiplier = true; // Bật/tắt nhân combo
+    public float maxComboMultiplier = 4f; // Hệ số nhân tối đa (x4)
+    public int comboForMaxMultiplier = 20; // Combo cần để đạt max multiplier
+    
+    // Cài đặt Speed Increase
+    public bool enableSpeedIncrease = true; // Bật/tắt tăng tốc
+    public float maxSpeedMultiplier = 2f; // Tốc độ tối đa (x2)
+    public int comboForMaxSpeed = 30; // Combo cần để đạt max speed
     
     // Cài đặt Điểm Bonus (khoảng cách từ HitBar)
     public float perfectRange = 0.2f;  // ±0.2 units từ HitBar
     public float greatRange = 0.5f;    // ±0.5 units từ HitBar
     public float goodRange = 1.0f;     // ±1.0 units từ HitBar
     
-    [HideInInspector] public float currentSpeed; 
+    [HideInInspector] public float currentSpeed;
+    [HideInInspector] public float baseSpeed; // Tốc độ gốc (không đổi) 
     
     private int score = 0;
     private int highScore = 0;
@@ -40,15 +53,23 @@ public class GameController : MonoBehaviour
     {
         float spawnTimeInterval = 60f / musicBPM;
         float distance = spawnZPosition - hitZPosition;
-        currentSpeed = distance / spawnTimeInterval; 
+        baseSpeed = distance / spawnTimeInterval; // Lưu tốc độ gốc
+        currentSpeed = baseSpeed; // Khởi tạo tốc độ hiện tại
         
-        Time.timeScale = 1f; // Khởi động game
+        // KHÔNG khởi động game ngay - để MenuManager điều khiển
+        // Time.timeScale sẽ = 0 từ MenuManager khi hiện Main Menu
     }
 
     void Start()
     {
         // Load High Score từ PlayerPrefs
         highScore = PlayerPrefs.GetInt(HIGH_SCORE_KEY, 0);
+        
+        // Tìm MenuManager nếu chưa được gán
+        if (menuManager == null)
+        {
+            menuManager = FindFirstObjectByType<MenuManager>();
+        }
         
         // Tự động tìm UI Text nếu chưa được gán
         AutoFindUIElements();
@@ -63,10 +84,8 @@ public class GameController : MonoBehaviour
         UpdateHighScoreUI();
         UpdateComboUI();
         
-        if (musicSource != null && musicSource.clip != null)
-        {
-            musicSource.Play(); // Bắt đầu phát nhạc
-        }
+        // KHÔNG tự động phát nhạc - để MenuManager điều khiển
+        // MenuManager sẽ phát nhạc khi người chơi chọn bài và bắt đầu game
     }
     
     // Tự động tìm UI elements nếu chưa được gán trong Inspector
@@ -193,22 +212,45 @@ public class GameController : MonoBehaviour
             combo++;
         }
         
-        // Thêm điểm combo bonus (mỗi 10 combo thêm 1 điểm)
-        int comboBonus = combo / 10;
-        scoreToAdd += comboBonus;
+        // ===== COMBO MULTIPLIER =====
+        float comboMultiplier = 1f;
+        if (enableComboMultiplier && combo > 1)
+        {
+            // Tính hệ số nhân dựa trên combo (từ 1x đến maxComboMultiplier)
+            comboMultiplier = 1f + ((maxComboMultiplier - 1f) * Mathf.Min(combo, comboForMaxMultiplier) / comboForMaxMultiplier);
+            scoreToAdd = Mathf.RoundToInt(scoreToAdd * comboMultiplier);
+        }
         
         score += scoreToAdd;
         
+        // ===== SPEED INCREASE =====
+        UpdateSpeed();
+        
         UpdateScoreUI();
         UpdateComboUI();
-        ShowFeedback(feedback);
+        ShowFeedback(feedback, comboMultiplier);
     }
 
+    // Cập nhật tốc độ dựa trên combo
+    private void UpdateSpeed()
+    {
+        if (!enableSpeedIncrease)
+        {
+            currentSpeed = baseSpeed;
+            return;
+        }
+        
+        // Tính hệ số tốc độ dựa trên combo (từ 1x đến maxSpeedMultiplier)
+        float speedMultiplier = 1f + ((maxSpeedMultiplier - 1f) * Mathf.Min(combo, comboForMaxSpeed) / comboForMaxSpeed);
+        currentSpeed = baseSpeed * speedMultiplier;
+    }
+    
     // Phương thức cũ cho tương thích ngược (không có bonus)
     public void AddScore()
     {
         score += normalScore;
         combo++;
+        UpdateSpeed();
         UpdateScoreUI();
         UpdateComboUI();
     }
@@ -253,7 +295,40 @@ public class GameController : MonoBehaviour
         {
             if (combo > 0)
             {
-                comboText.text = "Combo: " + combo.ToString() + "x";
+                // Tính combo multiplier để hiển thị
+                float comboMultiplier = 1f;
+                if (enableComboMultiplier && combo > 1)
+                {
+                    comboMultiplier = 1f + ((maxComboMultiplier - 1f) * Mathf.Min(combo, comboForMaxMultiplier) / comboForMaxMultiplier);
+                }
+                
+                // Hiển thị combo với multiplier
+                if (comboMultiplier > 1f)
+                {
+                    comboText.text = string.Format("Combo: {0}x (×{1:F1})", combo, comboMultiplier);
+                }
+                else
+                {
+                    comboText.text = "Combo: " + combo.ToString() + "x";
+                }
+                
+                // Thay đổi màu theo mức combo
+                if (combo >= comboForMaxMultiplier)
+                {
+                    comboText.color = new Color(1f, 0.2f, 0.2f, 1f); // Đỏ - MAX COMBO!
+                }
+                else if (combo >= comboForMaxMultiplier / 2)
+                {
+                    comboText.color = new Color(1f, 0.5f, 0f, 1f); // Cam - Combo cao
+                }
+                else if (combo >= 5)
+                {
+                    comboText.color = new Color(1f, 0.92f, 0.016f, 1f); // Vàng - Combo trung bình
+                }
+                else
+                {
+                    comboText.color = new Color(0.8f, 0.8f, 0.8f, 1f); // Xám - Combo thấp
+                }
             }
             else
             {
@@ -262,7 +337,7 @@ public class GameController : MonoBehaviour
         }
     }
     
-    private void ShowFeedback(string text)
+    private void ShowFeedback(string text, float multiplier = 1f)
     {
         if (feedbackText != null)
         {
@@ -270,7 +345,15 @@ public class GameController : MonoBehaviour
             StopAllCoroutines();
             CancelInvoke("ClearFeedback");
             
-            feedbackText.text = text;
+            // Hiển thị feedback với multiplier nếu > 1
+            if (multiplier > 1f)
+            {
+                feedbackText.text = text + "\n×" + multiplier.ToString("F1");
+            }
+            else
+            {
+                feedbackText.text = text;
+            }
             
             // Thay đổi màu sắc theo loại feedback
             switch (text)
@@ -368,6 +451,7 @@ public class GameController : MonoBehaviour
     public void ResetCombo()
     {
         combo = 0;
+        UpdateSpeed(); // Reset tốc độ về ban đầu
         UpdateComboUI();
     }
     
@@ -536,7 +620,12 @@ public class GameController : MonoBehaviour
         
         Time.timeScale = 0f;
         
-        if (gameOverPanel != null)
+        // Sử dụng MenuManager nếu có
+        if (menuManager != null)
+        {
+            menuManager.ShowGameOver(score, highScore);
+        }
+        else if (gameOverPanel != null)
         {
             gameOverPanel.SetActive(true);
         }
