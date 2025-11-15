@@ -137,7 +137,7 @@ public class FixUIAndLanes : EditorWindow
             return null;
         }
         
-        // 3. Extend LaneDivider length
+        // 3. Extend LaneDivider để bắt đầu từ đầu màn hình (từ trên xuống)
         GameObject[] laneDividers = new GameObject[]
         {
             GameObject.Find("LaneDivider"),
@@ -152,25 +152,38 @@ public class FixUIAndLanes : EditorWindow
             {
                 Transform t = divider.transform;
                 Vector3 scale = t.localScale;
+                Vector3 pos = t.position;
                 
-                // Tăng độ dài (Z scale) lên gấp 3 lần
-                scale.z *= 3f;
+                // Tăng độ dài (Z scale) để kéo dài từ đầu màn hình xuống cuối
+                // Z scale = 80 để vạch kẻ kéo dài từ z = -30 đến z = 50
+                scale.z = 80f;
                 t.localScale = scale;
                 
-                // Di chuyển về phía sau để kéo dài
-                Vector3 pos = t.position;
-                pos.z += 10f; // Dịch về phía sau
+                // Đặt vị trí ở giữa khoảng cách từ -30 đến 50
+                // Center position = (-30 + 50) / 2 = 10
+                pos.z = 10f;
                 t.position = pos;
                 
-                Debug.Log($"✅ Extended lane: {divider.name}");
+                Debug.Log($"✅ Extended lane {divider.name}: scale.z = {scale.z}, position.z = {pos.z} (starts from top of screen)");
                 EditorUtility.SetDirty(divider);
             }
+        }
+        
+        // 4. Update GameController spawnZPosition để nốt nhạc spawn từ đầu màn hình
+        GameController gameController = FindFirstObjectByType<GameController>();
+        if (gameController != null)
+        {
+            // Spawn từ z = 50 (xa camera) để nốt xuất hiện từ đầu màn hình
+            gameController.spawnZPosition = 50f;
+            Debug.Log($"✅ GameController spawnZPosition set to 50 (notes will spawn from top of screen)");
+            EditorUtility.SetDirty(gameController);
         }
         
         Debug.Log("🎉 All fixes complete!");
         Debug.Log("→ UI is now on top of lanes");
         Debug.Log("→ Menu panels are semi-transparent (lanes visible behind)");
-        Debug.Log("→ Lanes are 3x longer");
+        Debug.Log("→ Lanes start from top of screen (z = -30 to z = 50)");
+        Debug.Log("→ Notes spawn from top of screen (z = 50)");
     }
 }
 
